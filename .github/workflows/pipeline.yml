@@ -86,6 +86,9 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21', cache: maven }
       - run: mvn --batch-mode test
+      - name: Resumen de pruebas
+        if: always()
+        run: bash ../scripts/ci-metricas.sh pruebas
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: 05-surefire-reports, path: backend/target/surefire-reports/, if-no-files-found: ignore }
@@ -100,6 +103,9 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21', cache: maven }
       - run: mvn --batch-mode test-compile org.pitest:pitest-maven:mutationCoverage
+      - name: Resumen de mutacion
+        if: always()
+        run: bash ../scripts/ci-metricas.sh mutacion
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: 06-pit-report, path: backend/target/pit-reports/, if-no-files-found: ignore }
@@ -114,6 +120,9 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21', cache: maven }
       - run: mvn --batch-mode test jacoco:report jacoco:check
+      - name: Resumen de cobertura
+        if: always()
+        run: bash ../scripts/ci-metricas.sh cobertura
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: 07-jacoco-report, path: backend/target/site/jacoco/, if-no-files-found: ignore }
