@@ -229,7 +229,7 @@ Spring Boot 3.3.5).
 > **Hallazgo y corrección (INC-01 del informe):** el reporte completo de Trivy mostró
 > 9 CVE CRITICAL y 30 HIGH en las librerías de Spring Boot 3.3.5 (Tomcat 10.1.31,
 > Jackson 2.17.2, Spring Security 6.3.4, Spring Framework 6.1.14). Se actualizó a
-> **Spring Boot 3.5.16** con **Tomcat 10.1.58** y **Jackson 2.21.7**, y springdoc a 2.8.9.
+> **Spring Boot 3.5.16** con **Tomcat 10.1.61** y **Jackson 2.21.7**, y springdoc a 2.8.9.
 > Riesgo residual aceptado: CVE-2026-47884 y CVE-2026-47890 (spring-webmvc 6.2.19) solo se
 > corrigen en Spring Framework 7 / Spring Boot 4 (migración planificada).
 
