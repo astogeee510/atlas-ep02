@@ -72,6 +72,13 @@ elif tipo == "trivy":
     md = f"Imagen: `{data.get('ArtifactName')}` · SO: {os_name.get('Family', '')} {os_name.get('Name', '')}\n\n" + (
         "| CVE | Paquete | Severidad | Versión corregida |\n|---|---|---|---|\n" + "\n".join(filas) if filas else "Sin vulnerabilidades HIGH ni CRITICAL.")
     publicar(f"Trivy (todas las severidades, SO + librerías): {resumen}", md)
+    por_paquete = collections.defaultdict(list)
+    for res in data.get("Results", []) or []:
+        for v in res.get("Vulnerabilities", []) or []:
+            if v["Severity"] in ("CRITICAL", "HIGH"):
+                por_paquete[f"{v['PkgName']} {v.get('InstalledVersion', '')} -> {v.get('FixedVersion', '')}"].append(f"{v['VulnerabilityID']}({v['Severity'][0]})")
+    detalle = " ; ".join(f"{k}: {', '.join(sorted(set(c)))}" for k, c in sorted(por_paquete.items()))
+    print(f"::notice title=Trivy detalle CRITICAL/HIGH por paquete::{detalle[:3800] or 'Sin hallazgos'}")
 
 elif tipo == "zap":
     if not os.path.exists("report_json.json"):
@@ -87,6 +94,12 @@ elif tipo == "zap":
     md = "| Plugin | Alerta | Riesgo (confianza) | Instancias |\n|---|---|---|---|\n" + "\n".join(filas) if filas else "Sin alertas."
     resumen = " · ".join(f"{k} {riesgos.get(k, 0)}" for k in ("High", "Medium", "Low", "Informational"))
     publicar(f"OWASP ZAP baseline: {resumen}", md, "; ".join(f[2:-2] for f in filas)[:900] or "Sin alertas")
+    for site in data.get("site", []):
+        for a in site.get("alerts", []):
+            inst = a.get("instances", [])[:3]
+            det = " | ".join(f"{i.get('uri')} :: {i.get('param', '')} :: {(i.get('evidence') or '')[:200]}" for i in inst)
+            otro = (a.get("otherinfo") or "")[:300]
+            print(f"::notice title=ZAP {a.get('pluginid')} {a.get('alert')}::{det} || {otro}")
 
 elif tipo == "gatling":
     if not archivo or not os.path.exists(archivo):

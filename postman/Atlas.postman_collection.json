@@ -7,10 +7,10 @@
   },
   "item": [
     {
-      "name": "00 Preparación (login ADMIN y EDITOR)",
+      "name": "00 CP-AUT-01 Login ADMIN y EDITOR",
       "item": [
         {
-          "name": "Login ADMIN",
+          "name": "CP-AUT-01 Login ADMIN",
           "request": {
             "method": "POST",
             "header": [
@@ -52,7 +52,7 @@
           ]
         },
         {
-          "name": "Login EDITOR",
+          "name": "CP-AUT-01 Login EDITOR",
           "request": {
             "method": "POST",
             "header": [
@@ -1401,7 +1401,7 @@
       "name": "05 CP-CLI-07 Eliminación lógica con confirmación",
       "item": [
         {
-          "name": "Eliminar sin confirmar",
+          "name": "CP-CLI-07 Eliminar sin confirmar",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1437,7 +1437,7 @@
           ]
         },
         {
-          "name": "Eliminar confirmando",
+          "name": "CP-CLI-07 Eliminar confirmando",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1478,7 +1478,7 @@
           ]
         },
         {
-          "name": "El cliente eliminado ya no se muestra",
+          "name": "CP-CLI-07 El cliente eliminado ya no se muestra",
           "request": {
             "method": "GET",
             "header": [
@@ -1514,7 +1514,7 @@
           ]
         },
         {
-          "name": "Sus contratos tampoco",
+          "name": "CP-CLI-07 Sus contratos tampoco",
           "request": {
             "method": "GET",
             "header": [
@@ -1552,7 +1552,7 @@
       ]
     },
     {
-      "name": "06 CP-SEG Cabeceras y errores",
+      "name": "06 CP-SEG Cabeceras, documentación y errores",
       "item": [
         {
           "name": "CP-SEG-03 Cabeceras de seguridad en la Home",
@@ -1642,7 +1642,7 @@
           ]
         },
         {
-          "name": "CP-SEG-04 Método no permitido",
+          "name": "CP-SEG-06 Método no permitido (sin detalles internos)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1690,7 +1690,7 @@
       "name": "07 CP-AUT-04 Logout y revocación",
       "item": [
         {
-          "name": "Logout ADMIN",
+          "name": "CP-AUT-04 Logout ADMIN",
           "request": {
             "method": "POST",
             "header": [
@@ -1725,7 +1725,7 @@
           ]
         },
         {
-          "name": "El token revocado ya no sirve",
+          "name": "CP-AUT-04 El token revocado ya no sirve",
           "request": {
             "method": "GET",
             "header": [

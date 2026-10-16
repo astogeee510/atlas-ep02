@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import cl.duoc.atlas.infrastructure.adapters.jpa.UsuarioJpaRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -21,8 +22,9 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Pruebas de integracion con la aplicacion completa (Spring Security + JWT + SQLite real).
  *
- * <p>Cubren CP-AUT-01..04 (login, credenciales invalidas, bloqueo y logout), CP-ROL-01..02 (EDITOR
- * solo lectura, ADMIN escritura) y CP-SEG-03 (cabeceras de seguridad).
+ * <p>Cubren CP-AUT-01..05 (login, credenciales invalidas, bloqueo, logout y token alterado),
+ * CP-SEG-01 (hash bcrypt en la base de datos), CP-ROL-01..02 (EDITOR solo lectura, ADMIN escritura)
+ * y CP-SEG-03 (cabeceras de seguridad).
  */
 @SpringBootTest(
     properties = {
@@ -41,6 +43,7 @@ class SeguridadIntegracionTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
+  @Autowired private UsuarioJpaRepository usuarios;
 
   private String login(String usuario, String contrasena) throws Exception {
     String body =
@@ -63,6 +66,13 @@ class SeguridadIntegracionTest {
 
   private String bearer(String token) {
     return "Bearer " + token;
+  }
+
+  @Test
+  void lasContrasenasSeGuardanComoHashBcryptCosto12() {
+    String hash = usuarios.findByNombreUsuario("admin").orElseThrow().getHashContrasena();
+
+    assertThat(hash).startsWith("$2a$12$").hasSize(60).doesNotContain("Admin#Prueba1");
   }
 
   @Test
