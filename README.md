@@ -1,6 +1,6 @@
 # Atlas · Gestión de clientes, contratos y documentos
 
-![Pipeline](https://github.com/USUARIO/REPOSITORIO/actions/workflows/pipeline.yml/badge.svg)
+[![Pipeline Atlas](https://github.com/astogeee510/atlas-ep02/actions/workflows/pipeline.yml/badge.svg)](https://github.com/astogeee510/atlas-ep02/actions/workflows/pipeline.yml)
 
 Plataforma web de **CreaLab SpA** para que las pymes chilenas gestionen sus clientes, contratos y documentos,
 construida según el **ERS Caso A – Sistema de Gestión Atlas v1.1** y auditada con el pipeline completo de
@@ -175,6 +175,12 @@ bash scripts/uptime.sh 60 10
 | Checkstyle / Spotless / PMD (curso) | 0 | — | 0 |
 | PMD quickstart (revisión ampliada) | 5 avisos de baja prioridad | documentados en el informe | — |
 | Lighthouse (login, móvil) | Performance 92 · Accesibilidad 100 · Buenas prácticas 96 · LCP 1,9 s | — | — |
+| Trivy (pipeline) | Imagen base nginx con 44 CVE HIGH corregibles: el job 15 bloqueó la entrega | `apk upgrade` en los Dockerfile | 0 HIGH/CRITICAL en atlas-web y atlas-api |
+| OWASP ZAP (pipeline) | 0 altas · 1 media (CSP unsafe-inline) · 4 bajas | documentado (INC-09) | — |
+
+**Pipeline 20/20 en verde** (ejecución 38867412590): 172 pruebas del backend · cobertura 94,8 % · mutación 84,1 % ·
+SpotBugs 0 · Cypress 4/4 · Gatling 0 errores (p95 listar 13 ms) · JMeter 500 peticiones 0 % error · Lighthouse CI
+accesibilidad 100 y LCP 3,7 s (INC-08). Detalle en [`docs/resultados-herramientas/ci-pipeline.md`](docs/resultados-herramientas/ci-pipeline.md).
 
 ## 9. Evidencias
 
