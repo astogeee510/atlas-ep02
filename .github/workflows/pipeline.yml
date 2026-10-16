@@ -255,7 +255,9 @@ jobs:
           vuln-type: 'os'
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
-          exit-code: '1'
+          format: json
+          output: trivy-api.json
+          exit-code: '0'
       - name: Trivy imagen frontend
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -263,7 +265,29 @@ jobs:
           vuln-type: 'os'
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
-          exit-code: '1'
+          format: json
+          output: trivy-web.json
+          exit-code: '0'
+          skip-setup-trivy: true
+      - name: Trivy imagen base nginx sin actualizar (referencia)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: nginx:1.29-alpine
+          vuln-type: 'os'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          format: json
+          output: trivy-nginx-base.json
+          exit-code: '0'
+          skip-setup-trivy: true
+      - name: Resultado de Trivy (bloquea si hay CRITICAL/HIGH corregibles)
+        run: |
+          bash scripts/ci-trivy-resumen.sh trivy-nginx-base.json "nginx:1.29-alpine (base, referencia)" no
+          bash scripts/ci-trivy-resumen.sh trivy-api.json "atlas-api"
+          bash scripts/ci-trivy-resumen.sh trivy-web.json "atlas-web"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 15-trivy-reportes, path: 'trivy-*.json', if-no-files-found: ignore }
 
   e2e:
     name: 16 Cypress (E2E y regresion)
@@ -279,15 +303,23 @@ jobs:
       - uses: cypress-io/github-action@v6
         with:
           working-directory: frontend
-          browser: chrome
+          runTests: false
+      - name: Ejecutar Cypress (Chrome)
+        working-directory: frontend
         env:
           CYPRESS_BASE_URL: https://localhost
+        run: |
+          set -o pipefail
+          npx cypress run --browser chrome 2>&1 | tee cypress.out
+      - name: Detalle si falla
+        if: failure()
+        run: |
+          bash scripts/ci-anotar.sh "Cypress" frontend/cypress.out 80
+          docker compose -f infra/docker-compose.yml logs --tail=60 backend > backend.out 2>&1 || true
+          bash scripts/ci-anotar.sh "Log backend" backend.out 60
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: 16-cypress-capturas, path: frontend/cypress/screenshots/, if-no-files-found: ignore }
-      - name: Logs si falla
-        if: failure()
-        run: docker compose -f infra/docker-compose.yml logs
 
   dast:
     name: 17 OWASP ZAP (DAST)
@@ -310,6 +342,15 @@ jobs:
           fail_action: 'true'
           allow_issue_writing: 'false'
           artifact_name: '17-zap-report'
+      - name: Resumen de alertas ZAP
+        if: always()
+        run: |
+          if [ -f report_json.json ]; then
+            RESUMEN=$(jq -r '[.site[]?.alerts[]? | "\(.riskdesc) | \(.alert) (pluginid \(.pluginid), \(.count) instancias)"] | join("%0A")' report_json.json)
+            echo "::notice title=OWASP ZAP alertas::${RESUMEN:-Sin alertas}"
+          else
+            echo "::warning title=OWASP ZAP::No se genero report_json.json"
+          fi
 
   lighthouse:
     name: 18 Lighthouse (rendimiento y accesibilidad)
@@ -326,7 +367,17 @@ jobs:
           bash scripts/esperar-atlas.sh
       - name: Lighthouse CI (movil 375x667)
         working-directory: frontend
-        run: npx --yes @lhci/cli@0.15.1 autorun --config=./lighthouserc.json
+        run: |
+          set -o pipefail
+          npx --yes @lhci/cli@0.15.1 autorun --config=./lighthouserc.json 2>&1 | tee lhci.out
+      - name: Resumen Lighthouse
+        if: always()
+        run: |
+          for f in frontend/lhci-report/*.json; do
+            [ -f "$f" ] || continue
+            jq -r '"Performance \(.categories.performance.score*100) | Accessibility \(.categories.accessibility.score*100) | Best practices \(.categories["best-practices"].score*100) | LCP \(.audits["largest-contentful-paint"].displayValue) | FCP \(.audits["first-contentful-paint"].displayValue)"' "$f" 2>/dev/null | while read -r l; do echo "::notice title=Lighthouse $(basename "$f")::$l"; done
+          done
+          bash scripts/ci-anotar.sh "Lighthouse CI" frontend/lhci.out 25 notice
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: 18-lighthouse-report, path: frontend/lhci-report/, if-no-files-found: ignore }
@@ -353,7 +404,20 @@ jobs:
         run: |
           nohup mvn -q -DskipTests spring-boot:run > app.log 2>&1 &
           bash ../scripts/esperar-atlas.sh http://localhost:8080/actuator/health
-      - run: mvn --batch-mode gatling:test
+      - name: Ejecutar Gatling
+        run: |
+          set -o pipefail
+          mvn --batch-mode gatling:test 2>&1 | tee gatling.out
+      - name: Resumen Gatling
+        if: always()
+        run: |
+          grep -E "Global:|> |count|mean|percentile|OK=|KO=" gatling.out | tail -40 > gatling-resumen.out || true
+          bash ../scripts/ci-anotar.sh "Gatling" gatling-resumen.out 40 notice
+      - name: Detalle si falla
+        if: failure()
+        run: |
+          bash ../scripts/ci-anotar.sh "Gatling (salida)" gatling.out 60
+          bash ../scripts/ci-anotar.sh "Log API" app.log 60
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: 19-gatling-report, path: backend/target/gatling/, if-no-files-found: ignore }
@@ -384,9 +448,20 @@ jobs:
           nohup mvn -q -DskipTests spring-boot:run > app.log 2>&1 &
           bash ../scripts/esperar-atlas.sh http://localhost:8080/actuator/health
       - name: Ejecutar JMeter (50 usuarios en CI; 200 en el ambiente QA)
-        run: >-
-          mvn --batch-mode -Pjmeter -Djmeter.usuarios=50 -Djmeter.iteraciones=3
-          jmeter:configure@configuration jmeter:jmeter@jmeter-tests jmeter:results@jmeter-check-results
+        run: |
+          set -o pipefail
+          mvn --batch-mode -Pjmeter -Djmeter.usuarios=50 -Djmeter.iteraciones=3 \
+            jmeter:configure@configuration jmeter:jmeter@jmeter-tests jmeter:results@jmeter-check-results 2>&1 | tee jmeter.out
+      - name: Resumen JMeter
+        if: always()
+        run: |
+          grep -E "summary|Successful|Failed|Err:" jmeter.out | tail -20 > jmeter-resumen.out || true
+          bash ../scripts/ci-anotar.sh "JMeter" jmeter-resumen.out 20 notice
+      - name: Detalle si falla
+        if: failure()
+        run: |
+          bash ../scripts/ci-anotar.sh "JMeter (salida)" jmeter.out 60
+          bash ../scripts/ci-anotar.sh "Log API" app.log 60
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: 20-jmeter-results, path: backend/target/jmeter/results/, if-no-files-found: ignore }

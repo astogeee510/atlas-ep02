@@ -10,7 +10,8 @@ RUN mvn -q -B -DskipTests -Dspotless.check.skip=true -Dcheckstyle.skip=true pack
 
 # ---- Etapa 2: imagen final minima y sin root ----
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -S app && adduser -S app -G app
+# apk upgrade: aplica los parches de seguridad de Alpine publicados despues de la imagen base
+RUN apk upgrade --no-cache && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 RUN mkdir -p /app/data/storage && chown -R app:app /app
 COPY --from=build /app/target/atlas-api-1.0.0.jar app.jar

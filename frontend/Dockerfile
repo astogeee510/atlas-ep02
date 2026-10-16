@@ -11,7 +11,9 @@ RUN npm run build
 
 # ---- Etapa 2: nginx con TLS (NFR-SEG-1) ----
 FROM nginx:1.29-alpine
-RUN apk add --no-cache openssl \
+# apk upgrade: aplica los parches de seguridad de Alpine que aun no trae la imagen base (hallazgo Trivy)
+RUN apk upgrade --no-cache \
+    && apk add --no-cache openssl \
     && mkdir -p /etc/nginx/certs \
     && rm /etc/nginx/conf.d/default.conf
 COPY nginx/atlas.conf /etc/nginx/conf.d/atlas.conf
