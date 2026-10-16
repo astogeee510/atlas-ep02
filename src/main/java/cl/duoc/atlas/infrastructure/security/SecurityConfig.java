@@ -48,6 +48,7 @@ public class SecurityConfig {
                         "/redoc.html",
                         "/favicon.ico",
                         "/css/**",
+                        "/js/**",
                         "/openapi/**",
                         "/swagger-ui.html",
                         "/swagger-ui/**",

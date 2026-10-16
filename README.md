@@ -3,7 +3,7 @@
 MVP de **Atlas**, la plataforma de CreaLab SpA descrita en el ERS del **Caso A**:
 gestión de **clientes** y de sus **contratos** con estado calculado, **login con JWT**
 y **roles ADMIN / EDITOR**. Sigue la misma estructura y el mismo pipeline del
-proyecto base del curso (API de Alumnos): **Spring Boot 3 + Maven + SQLite**,
+proyecto base del curso (API de Alumnos): **Spring Boot 3.5 + Maven + SQLite**,
 arquitectura limpia y 14 herramientas de calidad y seguridad en GitHub Actions.
 
 Incluye:
@@ -222,9 +222,14 @@ snyk auth TU_TOKEN
 snyk test --severity-threshold=critical
 ```
 
-En GitHub Actions se activa con el secreto `SNYK_TOKEN`. El archivo `.snyk` acepta
-como riesgo temporal las vulnerabilidades críticas transitivas de Spring Boot 3.3.5
-(las mismas del proyecto base), con fecha de expiración.
+En GitHub Actions se activa con el secreto `SNYK_TOKEN`. El archivo `.snyk` es el del
+proyecto base (acepta como riesgo temporal, con vencimiento, las críticas transitivas de
+Spring Boot 3.3.5).
+
+> **Hallazgo y corrección (INC-04 del informe):** el reporte completo de Trivy mostró
+> 9 CVE CRITICAL y 30 HIGH en las librerías de Spring Boot 3.3.5 (Tomcat 10.1.31,
+> Jackson 2.17.2, Spring Security 6.3.4, Spring Framework 6.1.14). Se actualizó a
+> **Spring Boot 3.5.16** con **Tomcat 10.1.55** y **Jackson 2.21.7**, y springdoc a 2.8.9.
 
 ## Integración / BDD con Cucumber
 
@@ -267,7 +272,7 @@ como artefacto `trivy-report`.
 
 | Cabecera | Valor | Protege contra |
 | --- | --- | --- |
-| `Content-Security-Policy` | `default-src 'self'; …; frame-ancestors 'none'` | XSS, inyección |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; …; frame-ancestors 'none'` | XSS, inyección |
 | `X-Frame-Options` | `DENY` | Clickjacking |
 | `X-Content-Type-Options` | `nosniff` | Sniffing de contenido |
 | `Referrer-Policy` | `no-referrer` | Fuga de referrer |
@@ -281,6 +286,10 @@ docker run --rm --network host -v "$PWD":/zap/wrk/:rw \
   ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
   -t http://localhost:8080 -i -c .zap/rules.tsv -r zap-report.html
 ```
+
+Redoc se sirve desde la propia aplicación (`/js/redoc.standalone.js`, MIT), sin CDN: así
+la CSP no permite scripts de terceros y se eliminaron las alertas 90003 (SRI) y 10017
+(JavaScript de otro dominio) que ZAP reportó en la primera ejecución.
 
 `.zap/rules.tsv` marca como **FAIL** la falta de anti-clickjacking (10020),
 `nosniff` (10021) y CSP (10038). El escaneo autenticado con ZAP Desktop se explica en

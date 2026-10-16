@@ -12,9 +12,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Agrega cabeceras de seguridad HTTP a todas las respuestas, para mitigar clickjacking, sniffing de
- * contenido e inyeccion de scripts (NFR-SEG-5). La politica CSP solo permite recursos propios y el
- * script de Redoc desde su CDN oficial. Se ejecuta antes que Spring Security para que tambien las
- * respuestas 401/403 lleven las cabeceras.
+ * contenido e inyeccion de scripts (NFR-SEG-5). La politica CSP solo permite recursos propios:
+ * Redoc se sirve desde la aplicacion (sin CDN). 'unsafe-inline' en estilos lo exigen Swagger UI y
+ * Redoc. Se ejecuta antes que Spring Security para que tambien las respuestas 401/403 lleven las
+ * cabeceras.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -22,11 +23,9 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
 
   /** Politica de seguridad de contenido aplicada a todas las respuestas. */
   public static final String CSP =
-      "default-src 'self'; script-src 'self' https://cdn.redoc.ly; "
-          + "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-          + "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://cdn.redoc.ly; "
-          + "worker-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; "
-          + "form-action 'self'; base-uri 'self'";
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+          + "img-src 'self' data:; font-src 'self' data:; worker-src 'self' blob:; "
+          + "connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'";
 
   @Override
   protected void doFilterInternal(
