@@ -1,0 +1,392 @@
+# ============================================================================
+# Atlas - pipeline completo de calidad y seguridad (EP02 / Caso A)
+#
+# Dos cadenas encadenadas con `needs` (si un job falla, los siguientes no corren):
+#   Backend : spotless > checkstyle > pmd > spotbugs > test > mutation > jacoco > sonarqube > snyk > cucumber
+#   Frontend: fe-lint > fe-test > fe-audit > fe-build
+#   Entrega : container > e2e > dast > lighthouse > performance > performance-jmeter
+# ============================================================================
+name: Pipeline Atlas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: atlas-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '22'
+
+jobs:
+  # ------------------------------------------------------------------ BACKEND
+  spotless:
+    name: 01 Spotless (formato)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn --batch-mode spotless:check
+
+  checkstyle:
+    name: 02 Checkstyle (convenciones)
+    needs: spotless
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn --batch-mode checkstyle:check
+
+  pmd:
+    name: 03 PMD (code smells)
+    needs: checkstyle
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn --batch-mode pmd:check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 03-pmd-report, path: backend/target/site/pmd.html, if-no-files-found: ignore }
+
+  spotbugs:
+    name: 04 SpotBugs (bugs en bytecode)
+    needs: pmd
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn --batch-mode compile spotbugs:check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 04-spotbugs-report, path: backend/target/spotbugsXml.xml, if-no-files-found: ignore }
+
+  test:
+    name: 05 JUnit + Mockito + Testcontainers
+    needs: spotbugs
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn --batch-mode test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 05-surefire-reports, path: backend/target/surefire-reports/, if-no-files-found: ignore }
+
+  mutation:
+    name: 06 PIT (mutacion)
+    needs: test
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn --batch-mode test-compile org.pitest:pitest-maven:mutationCoverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 06-pit-report, path: backend/target/pit-reports/, if-no-files-found: ignore }
+
+  jacoco:
+    name: 07 JaCoCo (cobertura)
+    needs: mutation
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn --batch-mode test jacoco:report jacoco:check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 07-jacoco-report, path: backend/target/site/jacoco/, if-no-files-found: ignore }
+
+  sonarqube:
+    name: 08 SonarQube (quality gate)
+    needs: jacoco
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - name: Analisis con SonarQube / SonarCloud
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ] || [ -z "$SONAR_HOST_URL" ]; then
+            echo "::warning::SONAR_TOKEN/SONAR_HOST_URL no configurados; se omite SonarQube."
+            exit 0
+          fi
+          ORG_ARG=""
+          if [ -n "$SONAR_ORGANIZATION" ]; then ORG_ARG="-Dsonar.organization=$SONAR_ORGANIZATION"; fi
+          mvn --batch-mode test jacoco:report sonar:sonar -Dsonar.qualitygate.wait=true $ORG_ARG
+
+  snyk:
+    name: 09 Snyk (dependencias)
+    needs: sonarqube
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+      - name: Analizar pom.xml y package.json
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::warning::SNYK_TOKEN no configurado; se omite Snyk."
+            exit 0
+          fi
+          snyk test --all-projects --severity-threshold=critical
+
+  cucumber:
+    name: 10 Cucumber (BDD)
+    needs: snyk
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn --batch-mode test -Dtest=CucumberRunnerTest -Dsurefire.failIfNoSpecifiedTests=false
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 10-cucumber-report, path: backend/target/cucumber-report.html, if-no-files-found: ignore }
+
+  # ----------------------------------------------------------------- FRONTEND
+  fe-lint:
+    name: 11 ESLint (SAST frontend)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    env: { CYPRESS_INSTALL_BINARY: '0' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run lint:report
+        if: always()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 11-eslint-report, path: frontend/eslint-report.json, if-no-files-found: ignore }
+
+  fe-test:
+    name: 12 Vitest (pruebas frontend)
+    needs: fe-lint
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    env: { CYPRESS_INSTALL_BINARY: '0' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 12-vitest-coverage, path: frontend/coverage/, if-no-files-found: ignore }
+
+  fe-audit:
+    name: 13 npm audit (SCA frontend)
+    needs: fe-test
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Reporte completo (incluye herramientas de build)
+        run: npm audit --json > npm-audit.json || true
+      - name: Dependencias de produccion sin vulnerabilidades altas o criticas
+        run: npm audit --omit=dev --audit-level=high
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 13-npm-audit, path: frontend/npm-audit.json, if-no-files-found: ignore }
+
+  fe-build:
+    name: 14 Build frontend (Vite)
+    needs: fe-audit
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    env: { CYPRESS_INSTALL_BINARY: '0' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run build
+
+  # ------------------------------------------------------------------ ENTREGA
+  container:
+    name: 15 Docker + Trivy
+    needs: [cucumber, fe-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t atlas-api:${{ github.sha }} backend
+      - run: docker build -t atlas-web:${{ github.sha }} frontend
+      - name: Trivy imagen backend
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: atlas-api:${{ github.sha }}
+          vuln-type: 'os'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Trivy imagen frontend
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: atlas-web:${{ github.sha }}
+          vuln-type: 'os'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '1'
+
+  e2e:
+    name: 16 Cypress (E2E y regresion)
+    needs: container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Levantar Atlas con Docker Compose
+        run: |
+          bash scripts/generar-env.sh
+          docker compose -f infra/docker-compose.yml up -d --build
+          bash scripts/esperar-atlas.sh
+      - uses: cypress-io/github-action@v6
+        with:
+          working-directory: frontend
+          browser: chrome
+        env:
+          CYPRESS_BASE_URL: https://localhost
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: 16-cypress-capturas, path: frontend/cypress/screenshots/, if-no-files-found: ignore }
+      - name: Logs si falla
+        if: failure()
+        run: docker compose -f infra/docker-compose.yml logs
+
+  dast:
+    name: 17 OWASP ZAP (DAST)
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Levantar Atlas con Docker Compose
+        run: |
+          bash scripts/generar-env.sh
+          docker compose -f infra/docker-compose.yml up -d --build
+          bash scripts/esperar-atlas.sh
+      - name: Escanear con ZAP (baseline)
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: 'https://localhost'
+          rules_file_name: 'backend/.zap/rules.tsv'
+          cmd_options: '-i'
+          fail_action: 'true'
+          allow_issue_writing: 'false'
+          artifact_name: '17-zap-report'
+
+  lighthouse:
+    name: 18 Lighthouse (rendimiento y accesibilidad)
+    needs: dast
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Levantar Atlas con Docker Compose
+        run: |
+          bash scripts/generar-env.sh
+          docker compose -f infra/docker-compose.yml up -d --build
+          bash scripts/esperar-atlas.sh
+      - name: Lighthouse CI (movil 375x667)
+        working-directory: frontend
+        run: npx --yes @lhci/cli@0.15.1 autorun --config=./lighthouserc.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 18-lighthouse-report, path: frontend/lhci-report/, if-no-files-found: ignore }
+
+  performance:
+    name: 19 Gatling (carga)
+    needs: lighthouse
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_DB: atlas, POSTGRES_USER: atlas, POSTGRES_PASSWORD: atlas }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U atlas" --health-interval 5s --health-timeout 3s --health-retries 20
+    defaults: { run: { working-directory: backend } }
+    env:
+      ATLAS_COOKIE_SECURE: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - name: Levantar la API
+        run: |
+          nohup mvn -q -DskipTests spring-boot:run > app.log 2>&1 &
+          bash ../scripts/esperar-atlas.sh http://localhost:8080/actuator/health
+      - run: mvn --batch-mode gatling:test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 19-gatling-report, path: backend/target/gatling/, if-no-files-found: ignore }
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: 19-app-log, path: backend/app.log, if-no-files-found: ignore }
+
+  performance-jmeter:
+    name: 20 JMeter (carga)
+    needs: performance
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_DB: atlas, POSTGRES_USER: atlas, POSTGRES_PASSWORD: atlas }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U atlas" --health-interval 5s --health-timeout 3s --health-retries 20
+    defaults: { run: { working-directory: backend } }
+    env:
+      ATLAS_COOKIE_SECURE: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - name: Levantar la API
+        run: |
+          nohup mvn -q -DskipTests spring-boot:run > app.log 2>&1 &
+          bash ../scripts/esperar-atlas.sh http://localhost:8080/actuator/health
+      - name: Ejecutar JMeter (50 usuarios en CI; 200 en el ambiente QA)
+        run: >-
+          mvn --batch-mode -Pjmeter -Djmeter.usuarios=50 -Djmeter.iteraciones=3
+          jmeter:configure@configuration jmeter:jmeter@jmeter-tests jmeter:results@jmeter-check-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 20-jmeter-results, path: backend/target/jmeter/results/, if-no-files-found: ignore }

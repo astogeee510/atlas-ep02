@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  NFR-SEG-6: gestion de log segura.
+  - Nunca se registran contrasenas, tokens ni datos bancarios (el codigo no los envia al log).
+  - Por si algun mensaje incluyera un token, el patron reemplaza "Bearer [token]" por "Bearer ***".
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <property name="PATRON"
+              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} - %replace(%msg){'Bearer [A-Za-z0-9._-]+', 'Bearer ***'}%n%throwable"/>
+
+    <appender name="CONSOLA" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${PATRON}</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLA"/>
+    </root>
+</configuration>

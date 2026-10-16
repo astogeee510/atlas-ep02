@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* NFR-USAB-1: foco siempre visible para navegacion por teclado */
+:focus-visible {
+  outline: 3px solid #f2b705;
+  outline-offset: 2px;
+}
+
+.saltar-contenido {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 2000;
+  padding: 12px 16px;
+  background: #ffffff;
+  color: #0b4f8a;
+  font-weight: 700;
+}
+
+.saltar-contenido:focus {
+  left: 8px;
+  top: 8px;
+}

@@ -1,0 +1,58 @@
+# ============================================================================
+# Atlas - ambiente QA reproducible (ERS 2.1: React + API + PostgreSQL)
+#
+#   1) bash scripts/generar-env.sh        # crea infra/.env con secretos aleatorios
+#   2) docker compose -f infra/docker-compose.yml up -d --build
+#   3) abrir https://localhost  (certificado autofirmado de QA)
+#
+# Usuarios de prueba (datos sinteticos): admin.demo / editor.demo / admin.otra
+# Contrasena: Atlas#Demo2026
+# ============================================================================
+name: atlas
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: atlas
+      POSTGRES_USER: ${ATLAS_DB_USER:-atlas}
+      POSTGRES_PASSWORD: ${ATLAS_DB_PASSWORD:?Defina ATLAS_DB_PASSWORD en infra/.env}
+    volumes:
+      - atlas_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d atlas"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # Sin puerto publicado: la BD solo es accesible desde la red interna de Docker
+
+  backend:
+    build: ../backend
+    environment:
+      ATLAS_DB_URL: jdbc:postgresql://db:5432/atlas
+      ATLAS_DB_USER: ${ATLAS_DB_USER:-atlas}
+      ATLAS_DB_PASSWORD: ${ATLAS_DB_PASSWORD}
+      ATLAS_JWT_SECRET: ${ATLAS_JWT_SECRET:?Defina ATLAS_JWT_SECRET en infra/.env}
+      ATLAS_CRYPTO_KEY: ${ATLAS_CRYPTO_KEY:?Defina ATLAS_CRYPTO_KEY en infra/.env}
+      ATLAS_CORS_ORIGINS: https://localhost
+      ATLAS_COOKIE_SECURE: "true"
+    volumes:
+      - atlas_storage:/app/data/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Expuesto solo en localhost para Postman, JMeter y Gatling en el ambiente QA
+      - "127.0.0.1:8080:8080"
+
+  frontend:
+    build: ../frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+
+volumes:
+  atlas_db:
+  atlas_storage:

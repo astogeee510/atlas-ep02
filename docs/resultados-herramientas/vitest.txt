@@ -1,0 +1,53 @@
+
+ RUN  v5.0.5 /home/claude/atlas/frontend
+      Coverage enabled with v8
+
+
+ Test Files  4 passed (4)
+      Tests  25 passed (25)
+   Start at  02:39:06
+   Duration  5.56s (environment 34%, tests 24%, import 22%, setup 12%, transform 4%, worker 3%)
+
+    Isolate  4 workers spawned · ~531ms startup each (spawn + environment, per file)
+             at least ~1.59s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   16.13 |    17.67 |   13.28 |   16.87 |                   
+ src               |       0 |      100 |       0 |       0 |                   
+  App.jsx          |       0 |      100 |       0 |       0 | 9-29              
+  tema.js          |       0 |      100 |     100 |       0 | 7                 
+ src/api           |   39.53 |    52.38 |      50 |   39.53 |                   
+  cliente.js       |   39.53 |    52.38 |      50 |   39.53 | 20-23,29-49,80-88 
+ src/auth          |    4.87 |        0 |    6.66 |    5.26 |                   
+  AuthContext.jsx  |    4.87 |        0 |    6.66 |    5.26 | 8-76              
+ src/components    |    6.52 |     5.49 |   11.53 |    7.14 |                   
+  ...ormulario.jsx |       0 |        0 |       0 |       0 | 5-65              
+  ...ormulario.jsx |       0 |        0 |       0 |       0 | 6-21              
+  Layout.jsx       |       0 |        0 |       0 |       0 | 7-61              
+  Mensaje.jsx      |     100 |       80 |     100 |     100 | 9                 
+  ...Documento.jsx |       0 |        0 |       0 |       0 | 6-69              
+  ...Protegida.jsx |       0 |        0 |       0 |       0 | 7-24              
+ src/pages         |    8.49 |     3.89 |     5.4 |    8.86 |                   
+  ...toriaPage.jsx |       0 |        0 |       0 |       0 | 10-55             
+  ClientesPage.jsx |       0 |        0 |       0 |       0 | 10-143            
+  ...ratosPage.jsx |       0 |        0 |       0 |       0 | 15-118            
+  ...presaPage.jsx |       0 |      100 |       0 |       0 | 10-29             
+  ...boardPage.jsx |       0 |        0 |       0 |       0 | 9-36              
+  LoginPage.jsx    |     100 |       75 |     100 |     100 | 23                
+  ...tradoPage.jsx |       0 |      100 |       0 |       0 | 5                 
+  ...cidadPage.jsx |       0 |      100 |       0 |       0 | 6                 
+  RegistroPage.jsx |       0 |        0 |       0 |       0 | 23-99             
+  UsuariosPage.jsx |       0 |        0 |       0 |       0 | 8-143             
+ src/utils         |   90.32 |    90.47 |   85.71 |   89.65 |                   
+  validaciones.js  |   88.46 |    88.23 |   83.33 |    87.5 | 49-52             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 16.13% ( 71/440 )
+Branches     : 17.67% ( 38/215 )
+Functions    : 13.28% ( 19/143 )
+Lines        : 16.87% ( 69/409 )
+================================================================================

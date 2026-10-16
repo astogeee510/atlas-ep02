@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+lhci-report
+cypress/videos
+cypress/screenshots
+eslint-report.json

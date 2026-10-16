@@ -1,0 +1,60 @@
+# Politica de Snyk (.snyk)
+#
+# Se IGNORAN (riesgo aceptado) las vulnerabilidades CRITICAS que provienen de
+# dependencias TRANSITIVAS del framework base (Spring Boot 3.3.5 / Tomcat /
+# Jackson). Se aceptan temporalmente hasta actualizar el framework.
+#
+# El objetivo del ejercicio es detectar dependencias vulnerables AGREGADAS al
+# proyecto (ver con-error), no las del framework base.
+version: v1.25.0
+ignore:
+  SNYK-JAVA-COMFASTERXMLJACKSONCORE-17440366:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
+  SNYK-JAVA-COMFASTERXMLJACKSONCORE-17440598:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
+  SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
+  SNYK-JAVA-ORGAPACHETOMCATEMBED-16691231:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
+  SNYK-JAVA-ORGAPACHETOMCATEMBED-17733813:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
+  SNYK-JAVA-ORGAPACHETOMCATEMBED-8523186:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
+  SNYK-JAVA-ORGAPACHETOMCATEMBED-8547999:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191022:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16200231:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
+  SNYK-JAVA-ORGSPRINGFRAMEWORK-19267098:
+    - '*':
+        reason: >-
+          Transitiva de Spring Boot 3.3.5; se corrige actualizando el framework.
+        expires: 2027-12-31T00:00:00.000Z
