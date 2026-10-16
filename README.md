@@ -226,10 +226,12 @@ En GitHub Actions se activa con el secreto `SNYK_TOKEN`. El archivo `.snyk` es e
 proyecto base (acepta como riesgo temporal, con vencimiento, las críticas transitivas de
 Spring Boot 3.3.5).
 
-> **Hallazgo y corrección (INC-04 del informe):** el reporte completo de Trivy mostró
+> **Hallazgo y corrección (INC-01 del informe):** el reporte completo de Trivy mostró
 > 9 CVE CRITICAL y 30 HIGH en las librerías de Spring Boot 3.3.5 (Tomcat 10.1.31,
 > Jackson 2.17.2, Spring Security 6.3.4, Spring Framework 6.1.14). Se actualizó a
-> **Spring Boot 3.5.16** con **Tomcat 10.1.55** y **Jackson 2.21.7**, y springdoc a 2.8.9.
+> **Spring Boot 3.5.16** con **Tomcat 10.1.58** y **Jackson 2.21.7**, y springdoc a 2.8.9.
+> Riesgo residual aceptado: CVE-2026-47884 y CVE-2026-47890 (spring-webmvc 6.2.19) solo se
+> corrigen en Spring Framework 7 / Spring Boot 4 (migración planificada).
 
 ## Integración / BDD con Cucumber
 
@@ -325,8 +327,8 @@ Resultados de referencia (equipo de 2 núcleos, app y JMeter en la misma máquin
 
 | Escenario | Peticiones | Errores | p95 login | p95 consultas |
 | --- | --- | --- | --- | --- |
-| 200 usuarios, rampa 60 s | 2 200 | 0 % | 435 ms | 6 ms |
-| 200 usuarios, rampa 20 s (estrés) | 2 200 | 0 % | 28 s | 1,9–4,1 s |
+| 200 usuarios, rampa 60 s | 2 200 | 0 % | 473 ms | 12 ms |
+| 200 usuarios, rampa 20 s (estrés) | 2 200 | 0 % | 28 s | 0,5–1,6 s |
 
 El escenario de estrés muestra que **bcrypt (costo 12) satura la CPU** cuando
 200 usuarios inician sesión casi al mismo tiempo. Está registrado como incidente de
