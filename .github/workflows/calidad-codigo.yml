@@ -1,0 +1,504 @@
+# ============================================================================
+# Pipeline de calidad y seguridad - MVP Atlas (Caso A, EP02 ISY1102)
+#
+# Basado en el pipeline del curso (calidad-codigo.yml): 14 jobs encadenados con
+# `needs`. Si un job falla, los siguientes no se ejecutan.
+#
+#   Spotless > Checkstyle > PMD > SpotBugs > JUnit+Mockito > PIT > JaCoCo >
+#   SonarQube > Snyk > Cucumber > Docker+Trivy > ZAP > Gatling > JMeter
+#
+# Cada herramienta publica su resultado en el resumen del job (Summary) y como
+# anotacion, mediante scripts/ci-resumen.sh, para capturarlo en el informe.
+#
+# SonarQube y Snyk se omiten (job en verde con aviso) mientras no existan los
+# secretos SONAR_TOKEN / SONAR_HOST_URL y SNYK_TOKEN. Ver githubAction.md.
+# ============================================================================
+
+name: Calidad de código
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: calidad-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  spotless:
+    name: Spotless (formato de código)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Verificar formato con Spotless
+        run: mvn --batch-mode spotless:check
+
+  checkstyle:
+    name: Checkstyle (convenciones de código)
+    needs: spotless
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Verificar convenciones con Checkstyle
+        run: mvn --batch-mode checkstyle:check
+
+  pmd:
+    name: PMD (code smells)
+    needs: checkstyle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Analizar code smells con PMD
+        run: mvn --batch-mode pmd:check
+
+      - name: Subir reporte de PMD
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmd-report
+          path: target/site/pmd.html
+          if-no-files-found: ignore
+
+  spotbugs:
+    name: SpotBugs (bugs en el bytecode)
+    needs: pmd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Analizar bugs con SpotBugs
+        run: mvn --batch-mode compile spotbugs:check
+
+      - name: Subir reporte de SpotBugs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-report
+          path: target/spotbugsXml.xml
+          if-no-files-found: ignore
+
+  test:
+    name: Pruebas unitarias (JUnit + Mockito)
+    needs: spotbugs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Ejecutar pruebas unitarias
+        run: mvn --batch-mode test
+
+      - name: Resumen de pruebas
+        if: always()
+        run: bash scripts/ci-resumen.sh pruebas
+
+      - name: Subir reportes de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+
+  mutation:
+    name: Mutación (PIT)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Ejecutar pruebas de mutación con PIT
+        run: mvn --batch-mode test-compile org.pitest:pitest-maven:mutationCoverage
+
+      - name: Resumen de mutación
+        if: always()
+        run: bash scripts/ci-resumen.sh mutacion
+
+      - name: Subir reporte de PIT
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pit-report
+          path: target/pit-reports/
+          if-no-files-found: ignore
+
+  jacoco:
+    name: JaCoCo (cobertura de pruebas)
+    needs: mutation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Verificar cobertura con JaCoCo
+        run: mvn --batch-mode test jacoco:report jacoco:check
+
+      - name: Resumen de cobertura
+        if: always()
+        run: bash scripts/ci-resumen.sh cobertura
+
+      - name: Subir reporte de JaCoCo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          if-no-files-found: ignore
+
+  sonarqube:
+    name: SonarQube (calidad)
+    needs: jacoco
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Análisis con SonarQube
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ] || [ -z "$SONAR_HOST_URL" ]; then
+            echo "::warning::SONAR_TOKEN/SONAR_HOST_URL no configurados; se omite el análisis de SonarQube."
+            echo "### SonarQube: pendiente (faltan los secretos SONAR_TOKEN y SONAR_HOST_URL)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          ORG=""
+          if [ -n "$SONAR_ORGANIZATION" ]; then ORG="-Dsonar.organization=$SONAR_ORGANIZATION"; fi
+          mvn --batch-mode test jacoco:report sonar:sonar -Dsonar.qualitygate.wait=true $ORG
+
+  snyk:
+    name: Snyk (seguridad de dependencias)
+    needs: sonarqube
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Instalar Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+
+      - name: Analizar dependencias con Snyk
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::warning::SNYK_TOKEN no configurado; se omite el análisis de Snyk."
+            echo "### Snyk: pendiente (falta el secreto SNYK_TOKEN)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          snyk test --severity-threshold=critical
+
+  cucumber:
+    name: Cucumber (BDD / integración)
+    needs: snyk
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Ejecutar pruebas BDD con Cucumber
+        run: mvn --batch-mode test -Dtest=CucumberRunnerTest
+
+      - name: Resumen de escenarios BDD
+        if: always()
+        run: bash scripts/ci-resumen.sh cucumber
+
+      - name: Subir reporte de Cucumber
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cucumber-report
+          path: target/cucumber-report.html
+          if-no-files-found: ignore
+
+  container:
+    name: Contenedor (Docker + Trivy)
+    needs: cucumber
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Construir la imagen Docker
+        run: docker build -t atlas-api:${{ github.sha }} .
+
+      - name: Escanear la imagen con Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: atlas-api:${{ github.sha }}
+          vuln-type: 'os'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Reporte completo de Trivy (JSON y HTML)
+        if: always()
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":/out \
+            aquasec/trivy:0.58.1 image --quiet --scanners vuln --format json \
+            --output /out/trivy-report.json atlas-api:${{ github.sha }}
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":/out \
+            aquasec/trivy:0.58.1 image --quiet --scanners vuln --pkg-types os \
+            --format template --template "@/contrib/html.tpl" \
+            --output /out/trivy-report.html atlas-api:${{ github.sha }}
+          bash scripts/ci-resumen.sh trivy trivy-report.json
+
+      - name: Subir reportes de Trivy
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.*
+          if-no-files-found: ignore
+
+  dast:
+    name: DAST (OWASP ZAP)
+    needs: container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Levantar la aplicación
+        run: |
+          nohup mvn -q -DskipTests spring-boot:run > app.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/ >/dev/null; then echo "Aplicación lista"; exit 0; fi
+            sleep 2
+          done
+          echo "La aplicación no respondió a tiempo" >&2
+          cat app.log
+          exit 1
+
+      - name: Escanear con ZAP (baseline)
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: 'http://localhost:8080'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-i'
+          fail_action: 'true'
+          allow_issue_writing: 'false'
+
+      - name: Resumen de alertas ZAP
+        if: always()
+        run: bash scripts/ci-resumen.sh zap
+
+      - name: Subir log de la aplicación (si falla)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-app-log
+          path: app.log
+          if-no-files-found: ignore
+
+      - name: Detener la aplicación
+        if: always()
+        run: |
+          pkill -f 'spring-boot:run' || true
+          pkill -f 'cl.duoc.atlas.AtlasApplication' || true
+
+  performance:
+    name: Rendimiento (Gatling)
+    needs: dast
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Levantar la aplicación
+        run: |
+          nohup mvn -q -DskipTests spring-boot:run > app.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/ >/dev/null; then echo "Aplicación lista"; exit 0; fi
+            sleep 2
+          done
+          echo "La aplicación no respondió a tiempo" >&2
+          cat app.log
+          exit 1
+
+      - name: Ejecutar Gatling
+        run: |
+          set -o pipefail
+          mvn --batch-mode gatling:test 2>&1 | tee gatling.out
+
+      - name: Resumen de Gatling
+        if: always()
+        run: bash scripts/ci-resumen.sh gatling gatling.out
+
+      - name: Subir reporte de Gatling
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gatling-report
+          path: target/gatling/
+          if-no-files-found: ignore
+
+      - name: Subir log de la aplicación (si falla)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-app-log
+          path: app.log
+          if-no-files-found: ignore
+
+      - name: Detener la aplicación
+        if: always()
+        run: |
+          pkill -f 'spring-boot:run' || true
+          pkill -f 'cl.duoc.atlas.AtlasApplication' || true
+
+  performance-jmeter:
+    name: Rendimiento (JMeter)
+    needs: performance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Levantar la aplicación
+        run: |
+          nohup mvn -q -DskipTests spring-boot:run > app.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/ >/dev/null; then echo "Aplicación lista"; exit 0; fi
+            sleep 2
+          done
+          echo "La aplicación no respondió a tiempo" >&2
+          cat app.log
+          exit 1
+
+      - name: Ejecutar JMeter
+        run: mvn --batch-mode -Pjmeter jmeter:configure@configuration jmeter:jmeter@jmeter-tests jmeter:results@jmeter-check-results
+
+      - name: Resumen de JMeter
+        if: always()
+        run: bash scripts/ci-resumen.sh jmeter
+
+      - name: Subir resultados de JMeter
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmeter-results
+          path: target/jmeter/results/
+          if-no-files-found: ignore
+
+      - name: Subir log de la aplicación (si falla)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmeter-app-log
+          path: app.log
+          if-no-files-found: ignore
+
+      - name: Detener la aplicación
+        if: always()
+        run: |
+          pkill -f 'spring-boot:run' || true
+          pkill -f 'cl.duoc.atlas.AtlasApplication' || true

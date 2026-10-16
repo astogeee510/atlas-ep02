@@ -1,7 +1,32 @@
-infra/.env
-backups/
-*.log
-.DS_Store
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### Data / SQLite ###
+data/*.db
+data/*.db-journal
+*.db
+*.db-journal
+
+### IDE ###
 .idea/
+*.iml
 .vscode/
-node_modules/
+.settings/
+.classpath
+.project
+
+### OS ###
+.DS_Store
+
+### Logs ###
+*.log
+
+### SonarQube ###
+.scannerwork/
+data/*.db-wal
+data/*.db-shm
+
+### Local ###
+.env

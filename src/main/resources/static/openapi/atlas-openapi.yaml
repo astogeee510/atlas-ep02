@@ -1,0 +1,524 @@
+openapi: 3.0.3
+info:
+  title: API Atlas
+  description: |
+    MVP de Atlas (Caso A - CreaLab SpA): gestión de clientes y de sus contratos con
+    estado calculado, login con JWT y roles ADMIN / EDITOR.
+
+    ### Cómo autenticarse
+    1. `POST /api/v1/auth/login` con un usuario de demostración (`admin` o `editor`).
+    2. Copiar el `accessToken` de la respuesta.
+    3. En Swagger UI pulsar **Authorize** y pegar el token.
+
+    ### Permisos
+    - **ADMIN**: lectura y escritura (RB-5).
+    - **EDITOR**: solo lectura; cualquier POST/PUT/DELETE responde 403 (RF-3.2, RB-4).
+
+    ### Recursos de documentación
+    - **Swagger UI**: `/swagger-ui.html`
+    - **Redoc**: `/redoc.html`
+    - **Home**: `/`
+  version: 1.0.0
+  contact:
+    name: Equipo Atlas - ISY1102
+  license:
+    name: Uso académico
+servers:
+  - url: http://localhost:8080
+    description: Entorno local
+tags:
+  - name: Autenticación
+    description: Inicio y cierre de sesión con JWT (RF-1)
+  - name: Clientes
+    description: Gestión de clientes (RF-4)
+  - name: Contratos
+    description: Contratos de cada cliente con su estado calculado (RF-5.1, RF-5.4)
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Inicia sesión y entrega un JWT de acceso
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login correcto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '401':
+          description: Usuario o contraseña incorrectos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Cuenta bloqueada 15 minutos tras 5 intentos fallidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/logout:
+    post:
+      tags: [Autenticación]
+      summary: Cierra la sesión revocando el token actual
+      operationId: logout
+      responses:
+        '204':
+          description: Sesión cerrada; el token ya no puede reutilizarse
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+  /api/v1/clientes:
+    get:
+      tags: [Clientes]
+      summary: Lista clientes activos con filtro por nombre y paginación
+      operationId: listarClientes
+      parameters:
+        - name: nombre
+          in: query
+          required: false
+          description: Texto a buscar en el nombre (sin distinguir mayúsculas)
+          schema:
+            type: string
+            example: ferre
+        - name: pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: tamano
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Página de clientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaClientes'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+    post:
+      tags: [Clientes]
+      summary: Crea un cliente (solo ADMIN)
+      operationId: crearCliente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+      responses:
+        '201':
+          description: Cliente creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClienteResponse'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '409':
+          description: Ya existe un cliente con ese RUT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/clientes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Clientes]
+      summary: Obtiene un cliente por su id
+      operationId: obtenerCliente
+      responses:
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClienteResponse'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+    put:
+      tags: [Clientes]
+      summary: Actualiza un cliente (solo ADMIN)
+      operationId: actualizarCliente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+      responses:
+        '200':
+          description: Cliente actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClienteResponse'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '409':
+          description: El RUT pertenece a otro cliente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Clientes]
+      summary: Elimina lógicamente un cliente (solo ADMIN)
+      description: Exige `confirmar=true`; sin confirmación responde 400 y no elimina.
+      operationId: eliminarCliente
+      parameters:
+        - name: confirmar
+          in: query
+          required: true
+          schema:
+            type: boolean
+            example: true
+      responses:
+        '204':
+          description: Cliente eliminado (queda inactivo)
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+  /api/v1/clientes/{id}/contratos:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Contratos]
+      summary: Lista los contratos de un cliente con su estado
+      operationId: listarContratos
+      responses:
+        '200':
+          description: Contratos del cliente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContratoResponse'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+    post:
+      tags: [Contratos]
+      summary: Crea un contrato para el cliente (solo ADMIN)
+      operationId: crearContrato
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContratoRequest'
+      responses:
+        '201':
+          description: Contrato creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContratoResponse'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+  /api/v1/contratos/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Contratos]
+      summary: Obtiene un contrato con su estado
+      operationId: obtenerContrato
+      responses:
+        '200':
+          description: Contrato encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContratoResponse'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+    put:
+      tags: [Contratos]
+      summary: Actualiza un contrato (solo ADMIN)
+      operationId: actualizarContrato
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContratoRequest'
+      responses:
+        '200':
+          description: Contrato actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContratoResponse'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+    delete:
+      tags: [Contratos]
+      summary: Elimina un contrato (solo ADMIN)
+      operationId: eliminarContrato
+      responses:
+        '204':
+          description: Contrato eliminado
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Identificador
+      schema:
+        type: integer
+        format: int64
+        example: 1
+  responses:
+    DatosInvalidos:
+      description: Datos inválidos o regla de negocio incumplida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NoAutenticado:
+      description: Falta el token o no es válido (expirado, alterado o revocado)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    SinPermiso:
+      description: El rol del usuario no tiene permiso (EDITOR intentando escribir)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NoEncontrado:
+      description: El recurso no existe o fue eliminado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    LoginRequest:
+      type: object
+      required: [nombreUsuario, contrasena]
+      properties:
+        nombreUsuario:
+          type: string
+          maxLength: 50
+          example: admin
+        contrasena:
+          type: string
+          maxLength: 72
+          format: password
+          example: Admin#Atlas2026
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT firmado (HS256) con vigencia de 15 minutos
+        tipo:
+          type: string
+          example: Bearer
+        expiraEn:
+          type: string
+          format: date-time
+        usuario:
+          type: string
+          example: admin
+        rol:
+          type: string
+          enum: [ADMIN, EDITOR]
+    ClienteRequest:
+      type: object
+      required: [rut, nombre, direccion, email, telefono]
+      properties:
+        rut:
+          type: string
+          description: RUT con dígito verificador válido (módulo 11)
+          pattern: '^[0-9.]{7,10}-?[0-9kK]$'
+          example: 12.345.678-5
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Ferretería Los Andes
+        descripcion:
+          type: string
+          maxLength: 255
+          example: Cliente mayorista
+        direccion:
+          type: string
+          maxLength: 150
+          example: Av. Matta 500, Santiago
+        email:
+          type: string
+          format: email
+          maxLength: 120
+          example: contacto@losandes.cl
+        telefono:
+          type: string
+          pattern: '^\+?[0-9]{8,12}$'
+          example: '+56912345678'
+    ClienteResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        rut:
+          type: string
+          example: 12345678-5
+        nombre:
+          type: string
+        descripcion:
+          type: string
+        direccion:
+          type: string
+        email:
+          type: string
+        telefono:
+          type: string
+    PaginaClientes:
+      type: object
+      properties:
+        contenido:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClienteResponse'
+        pagina:
+          type: integer
+          example: 0
+        tamano:
+          type: integer
+          example: 10
+        totalElementos:
+          type: integer
+          format: int64
+          example: 3
+        totalPaginas:
+          type: integer
+          example: 1
+    ContratoRequest:
+      type: object
+      required: [titulo, fechaInicio, fechaTermino]
+      properties:
+        titulo:
+          type: string
+          maxLength: 120
+          example: Suministro anual 2026
+        descripcion:
+          type: string
+          maxLength: 500
+          example: Entrega mensual de insumos
+        fechaInicio:
+          type: string
+          format: date
+          example: '2026-01-01'
+        fechaTermino:
+          type: string
+          format: date
+          description: No puede ser anterior a fechaInicio
+          example: '2026-12-31'
+    ContratoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        clienteId:
+          type: integer
+          format: int64
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        fechaInicio:
+          type: string
+          format: date
+        fechaTermino:
+          type: string
+          format: date
+        estado:
+          type: string
+          description: EXPIRADO si ya terminó, POR_VENCER si faltan 30 días o menos, ACTIVO en otro caso
+          enum: [ACTIVO, POR_VENCER, EXPIRADO]
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: Bad Request
+        message:
+          type: string
+          example: La solicitud contiene datos inválidos
+        path:
+          type: string
+          example: /api/v1/clientes
+        details:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            rut: El RUT debe tener el formato 12.345.678-5

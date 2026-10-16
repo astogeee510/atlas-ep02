@@ -1,58 +1,16 @@
 {
   "info": {
-    "_postman_id": "1f06ec8a-276f-488b-a824-5973fd71fc9d",
-    "name": "Atlas - EP02 Caso A",
-    "description": "Casos de prueba funcionales, de integracion y de seguridad de Atlas (ERS Caso A).\n\nAntes de ejecutar:\n1. docker compose -f infra/docker-compose.yml up -d --build\n2. En Postman: Settings > General > SSL certificate verification = OFF (certificado autofirmado de QA)\n3. Settings > General > Working directory = carpeta raiz del repositorio (para adjuntar postman/fixtures)\n4. Ejecutar la coleccion completa con el Collection Runner en el orden definido.\n\nNewman: npx newman run postman/Atlas.postman_collection.json -e postman/QA.postman_environment.json --insecure --working-dir .",
+    "_postman_id": "7556f206-fcea-43d1-9c54-b88efc4c4cc6",
+    "name": "Atlas MVP - Casos de prueba EP02",
+    "description": "Colección de pruebas funcionales y de seguridad del MVP Atlas (Caso A). Ejecutar en orden con el Collection Runner sobre el entorno 'Atlas local'. Cada request tiene tests automáticos (pestaña Tests) y su nombre indica el caso de prueba del informe (CP-...).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "00 Ambiente",
+      "name": "00 Preparación (login ADMIN y EDITOR)",
       "item": [
         {
-          "name": "Salud del sistema",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Estado UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{host}}/actuator/health",
-              "host": [
-                "{{host}}"
-              ],
-              "path": [
-                "actuator",
-                "health"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Login admin.demo",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) { pm.collectionVariables.set('tokenAdmin', pm.response.json().accessToken); }",
-                  "pm.test('Entrega un JWT', () => pm.expect(pm.response.json().accessToken.split('.')).to.have.lengthOf(3));"
-                ]
-              }
-            }
-          ],
+          "name": "Login ADMIN",
           "request": {
             "method": "POST",
             "header": [
@@ -62,41 +20,39 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/login",
+              "raw": "{{baseUrl}}/api/v1/auth/login",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "auth",
                 "login"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"admin.demo\",\n  \"contrasena\": \"{{clave}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "raw": "{\n  \"nombreUsuario\": \"admin\",\n  \"contrasena\": \"{{passwordAdmin}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Login editor.demo",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) { pm.collectionVariables.set('tokenEditor', pm.response.json().accessToken); }",
-                  "pm.test('Entrega un JWT', () => pm.expect(pm.response.json().accessToken.split('.')).to.have.lengthOf(3));"
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Entrega JWT Bearer con rol ADMIN\", () => { pm.expect(b.tipo).to.eql(\"Bearer\"); pm.expect(b.rol).to.eql(\"ADMIN\"); pm.expect(b.accessToken.split(\".\")).to.have.length(3); });",
+                  "pm.collectionVariables.set(\"tokenAdmin\", b.accessToken);"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Login EDITOR",
           "request": {
             "method": "POST",
             "header": [
@@ -106,84 +62,204 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/login",
+              "raw": "{{baseUrl}}/api/v1/auth/login",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "auth",
                 "login"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"editor.demo\",\n  \"contrasena\": \"{{clave}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "raw": "{\n  \"nombreUsuario\": \"editor\",\n  \"contrasena\": \"{{passwordEditor}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Login admin.otra",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) { pm.collectionVariables.set('tokenOtra', pm.response.json().accessToken); }",
-                  "pm.test('Entrega un JWT', () => pm.expect(pm.response.json().accessToken.split('.')).to.have.lengthOf(3));"
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Rol EDITOR\", () => pm.expect(b.rol).to.eql(\"EDITOR\"));",
+                  "pm.collectionVariables.set(\"tokenEditor\", b.accessToken);"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"admin.otra\",\n  \"contrasena\": \"{{clave}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
+          ]
         }
       ]
     },
     {
-      "name": "CP-FUN-01 Registro, empresa y primer ADMIN (RF-2)",
+      "name": "01 CP-AUT Autenticación",
       "item": [
         {
-          "name": "Registrar usuario",
+          "name": "CP-AUT-02 Contraseña incorrecta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"admin\",\n  \"contrasena\": \"incorrecta\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Mensaje genérico (no revela si el usuario existe)\", () => pm.expect(pm.response.json().message).to.eql(\"Usuario o contraseña incorrectos\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-AUT-02 Usuario inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"noexiste\",\n  \"contrasena\": \"x\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Mismo mensaje que contraseña incorrecta\", () => pm.expect(pm.response.json().message).to.eql(\"Usuario o contraseña incorrectos\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-AUT-02 Login sin datos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error en JSON con mensaje claro\", () => { const b = pm.response.json(); pm.expect(b.status).to.be.a(\"number\"); pm.expect(b.message).to.be.a(\"string\").and.not.empty; pm.expect(JSON.stringify(b)).to.not.include(\"Exception\"); });",
+                  "pm.test(\"Detalle por campo\", () => { const d = pm.response.json().details; pm.expect(d).to.have.property(\"nombreUsuario\"); pm.expect(d).to.have.property(\"contrasena\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-AUT-03 Bloqueo tras 5 intentos fallidos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"{{usuarioAtaque}}\",\n  \"contrasena\": \"fuerza-bruta\"\n}"
+            }
+          },
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('nuevoUsuario', 'qa' + Date.now());"
+                  "// Simula 5 intentos fallidos previos con un usuario distinto en cada ejecución",
+                  "const usuario = \"atacante\" + Date.now();",
+                  "pm.collectionVariables.set(\"usuarioAtaque\", usuario);",
+                  "const base = pm.variables.get(\"baseUrl\");",
+                  "for (let i = 0; i < 5; i++) {",
+                  "  pm.sendRequest({ url: base + \"/api/v1/auth/login\", method: \"POST\", header: { \"Content-Type\": \"application/json\" },",
+                  "    body: { mode: \"raw\", raw: JSON.stringify({ nombreUsuario: usuario, contrasena: \"x\" + i }) } }, () => {});",
+                  "}"
                 ]
               }
             },
@@ -192,561 +268,285 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.test('No devuelve el hash', () => pm.expect(pm.response.text()).to.not.include('password'));"
+                  "pm.test(\"HTTP 429 - cuenta bloqueada\", () => pm.response.to.have.status(429));",
+                  "pm.test(\"Indica el tiempo de bloqueo\", () => pm.expect(pm.response.json().message).to.include(\"15 minutos\"));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "CP-AUT-05 Sin token",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/auth/register",
+              "raw": "{{baseUrl}}/api/v1/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "auth",
-                "register"
+                "api",
+                "v1",
+                "clientes"
               ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"{{nuevoUsuario}}\",\n  \"correo\": \"{{nuevoUsuario}}@atlas.test\",\n  \"contrasena\": \"{{clave}}\",\n  \"consentimiento\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             }
-          }
-        },
-        {
-          "name": "Registro con contrasena debil (400)",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
-                  "pm.test('Explica la politica', () => pm.expect(pm.response.json().detalles.length).to.be.above(0));"
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Error en JSON con mensaje claro\", () => { const b = pm.response.json(); pm.expect(b.status).to.be.a(\"number\"); pm.expect(b.message).to.be.a(\"string\").and.not.empty; pm.expect(JSON.stringify(b)).to.not.include(\"Exception\"); });"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"debil{{$randomInt}}\",\n  \"correo\": \"debil{{$randomInt}}@atlas.test\",\n  \"contrasena\": \"abc123\",\n  \"consentimiento\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
+          ]
         },
         {
-          "name": "Login usuario nuevo",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('tokenNuevo', pm.response.json().accessToken);",
-                  "pm.test('Aun sin empresas', () => pm.expect(pm.response.json().empresas).to.have.lengthOf(0));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"{{nuevoUsuario}}\",\n  \"contrasena\": \"{{clave}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Crear empresa",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('empresaNueva', pm.response.json().id);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenNuevo}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Pyme QA\",\n  \"direccion\": \"Santiago\",\n  \"telefono\": \"+56 2 2222 3333\",\n  \"correo\": \"{{nuevoUsuario}}@pyme.test\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Primer usuario queda como ADMIN (RF-2.3)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Rol ADMIN', () => pm.expect(pm.response.json().empresas[0].rol).to.eql('ADMIN'));"
-                ]
-              }
-            }
-          ],
+          "name": "CP-AUT-05 Token alterado",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{tokenNuevo}}"
+                "value": "Bearer {{tokenAlterado}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/me",
+              "raw": "{{baseUrl}}/api/v1/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "auth",
-                "me"
+                "api",
+                "v1",
+                "clientes"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const t = pm.collectionVariables.get(\"tokenAdmin\");",
+                  "pm.collectionVariables.set(\"tokenAlterado\", t.slice(0, -4) + \"AAAA\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "CP-FUN-02 Login, logout y revocacion (RF-1)",
+      "name": "02 CP-CLI Clientes (ADMIN)",
       "item": [
         {
-          "name": "Login con contrasena incorrecta (401)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
-                ]
-              }
-            }
-          ],
+          "name": "CP-CLI-01 Crear cliente",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"admin.demo\",\n  \"contrasena\": \"Incorrecta#2026\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Login admin (200 + JWT + cookie HttpOnly)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('tokenTemporal', pm.response.json().accessToken);",
-                  "pm.test('Cookie de refresco HttpOnly', () => pm.expect(pm.response.headers.get('Set-Cookie')).to.include('HttpOnly'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"admin.demo\",\n  \"contrasena\": \"{{clave}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Perfil con token vigente",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenTemporal}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "me"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Logout (204)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenTemporal}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/logout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "logout"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Perfil con token revocado (401)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenTemporal}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "me"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-FUN-03 Clientes: crear, validar, listar, editar (RF-4)",
-      "item": [
-        {
-          "name": "Crear cliente con datos bancarios",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('clienteId', pm.response.json().id);",
-                  "pm.test('RUT normalizado', () => pm.expect(pm.response.json().rut).to.eql('76123456-0'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes",
+              "raw": "{{baseUrl}}/api/v1/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "empresas",
-                "1",
+                "api",
+                "v1",
                 "clientes"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Cliente QA {{$randomInt}}\",\n  \"rut\": \"76.123.456-0\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"direccion\": \"Av. Siempre Viva 742\",\n  \"correoContacto\": \"contacto@cliente.test\",\n  \"telefonoContacto\": \"+56 9 1234 5678\",\n  \"banco\": \"Banco Estado\",\n  \"numeroCuenta\": \"000123456789\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "raw": "{\n  \"rut\": \"{{rutNuevo}}\",\n  \"nombre\": \"Comercial Postman {{$randomInt}}\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"direccion\": \"Av. Providencia 1234, Santiago\",\n  \"email\": \"contacto@postman.cl\",\n  \"telefono\": \"+56912345678\"\n}"
             }
-          }
-        },
-        {
-          "name": "RUT invalido (400)",
+          },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Genera un RUT válido (módulo 11) distinto en cada ejecución",
+                  "const cuerpo = String(10000000 + Math.floor(Math.random() * 79999999));",
+                  "let suma = 0, m = 2;",
+                  "for (let i = cuerpo.length - 1; i >= 0; i--) { suma += Number(cuerpo[i]) * m; m = m === 7 ? 2 : m + 1; }",
+                  "const r = 11 - (suma % 11);",
+                  "const dv = r === 11 ? \"0\" : r === 10 ? \"K\" : String(r);",
+                  "pm.collectionVariables.set(\"rutNuevo\", cuerpo + \"-\" + dv);"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"RUT normalizado y con id\", () => { pm.expect(b.id).to.be.a(\"number\"); pm.expect(b.rut).to.eql(pm.collectionVariables.get(\"rutNuevo\")); });",
+                  "pm.collectionVariables.set(\"clienteId\", b.id);",
+                  "pm.test(\"Responde en menos de 300 ms (NFR-PERF-1)\", () => pm.expect(pm.response.responseTime).to.be.below(300));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "CP-CLI-02 RUT duplicado",
           "request": {
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes",
+              "raw": "{{baseUrl}}/api/v1/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "empresas",
-                "1",
+                "api",
+                "v1",
                 "clientes"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Cliente RUT malo\",\n  \"rut\": \"76.123.456-9\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "raw": "{\n  \"rut\": \"{{rutNuevo}}\",\n  \"nombre\": \"Comercial Postman {{$randomInt}}\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"direccion\": \"Av. Providencia 1234, Santiago\",\n  \"email\": \"contacto@postman.cl\",\n  \"telefono\": \"+56912345678\"\n}"
             }
-          }
-        },
-        {
-          "name": "Telefono invalido (400)",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error en JSON con mensaje claro\", () => { const b = pm.response.json(); pm.expect(b.status).to.be.a(\"number\"); pm.expect(b.message).to.be.a(\"string\").and.not.empty; pm.expect(JSON.stringify(b)).to.not.include(\"Exception\"); });"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "CP-CLI-03 RUT con dígito verificador incorrecto",
           "request": {
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes",
+              "raw": "{{baseUrl}}/api/v1/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "empresas",
-                "1",
+                "api",
+                "v1",
                 "clientes"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Cliente Tel\",\n  \"telefonoContacto\": \"abc\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "raw": "{\n  \"rut\": \"12.345.678-9\",\n  \"nombre\": \"Cliente RUT Malo\",\n  \"direccion\": \"Calle 1\",\n  \"email\": \"a@b.cl\",\n  \"telefono\": \"+56912345678\"\n}"
             }
-          }
-        },
-        {
-          "name": "Listar con filtro y paginacion",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Responde en menos de 300 ms (NFR-PERF-1)', () => pm.expect(pm.response.responseTime).to.be.below(300));",
-                  "pm.test('Pagina de 5 como maximo', () => pm.expect(pm.response.json().contenido.length).to.be.at.most(5));"
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de RUT inválido\", () => pm.expect(pm.response.json().message).to.include(\"RUT no es válido\"));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "CP-CLI-04 Entrada con script (XSS) y formatos inválidos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rut\": \"abc\",\n  \"nombre\": \"<script>alert(1)</script>\",\n  \"direccion\": \"<img src=x onerror=alert(1)>\",\n  \"email\": \"no-es-correo\",\n  \"telefono\": \"123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Rechaza cada campo inválido\", () => { const d = pm.response.json().details; [\"rut\",\"nombre\",\"direccion\",\"email\",\"telefono\"].forEach(c => pm.expect(d).to.have.property(c)); });",
+                  "pm.test(\"No refleja el script en la respuesta\", () => pm.expect(pm.response.text()).to.not.include(\"<script>\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CLI-05 Listar con filtro y paginación",
           "request": {
             "method": "GET",
             "header": [
@@ -756,19 +556,19 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes?nombre=Cliente QA&pagina=0&tamano=5",
+              "raw": "{{baseUrl}}/api/v1/clientes?nombre=postman&pagina=0&tamano=5",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "empresas",
-                "1",
+                "api",
+                "v1",
                 "clientes"
               ],
               "query": [
                 {
                   "key": "nombre",
-                  "value": "Cliente QA"
+                  "value": "postman"
                 },
                 {
                   "key": "pagina",
@@ -780,201 +580,144 @@
                 }
               ]
             }
-          }
-        },
-        {
-          "name": "Editar cliente",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Nombre actualizado', () => pm.expect(pm.response.json().nombre).to.eql('Cliente QA editado'));"
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Estructura de página\", () => { pm.expect(b.contenido).to.be.an(\"array\"); pm.expect(b.tamano).to.eql(5); pm.expect(b.totalElementos).to.be.at.least(1); });",
+                  "pm.test(\"Todos coinciden con el filtro\", () => b.contenido.forEach(c => pm.expect(c.nombre.toLowerCase()).to.include(\"postman\")));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "CP-CLI-05 Tamaño de página fuera de rango",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes?tamano=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes"
+              ],
+              "query": [
+                {
+                  "key": "tamano",
+                  "value": "500"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error en JSON con mensaje claro\", () => { const b = pm.response.json(); pm.expect(b.status).to.be.a(\"number\"); pm.expect(b.message).to.be.a(\"string\").and.not.empty; pm.expect(JSON.stringify(b)).to.not.include(\"Exception\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CLI-06 Obtener cliente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CLI-06 Actualizar cliente",
           "request": {
             "method": "PUT",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "clientes",
                 "{{clienteId}}"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Cliente QA editado\",\n  \"rut\": \"76.123.456-0\",\n  \"descripcion\": \"Editado desde Postman\",\n  \"direccion\": \"Av. Siempre Viva 742\",\n  \"correoContacto\": \"contacto@cliente.test\",\n  \"telefonoContacto\": \"+56 9 1234 5678\",\n  \"banco\": \"Banco Estado\",\n  \"numeroCuenta\": \"000123456789\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
+              "raw": "{\n  \"rut\": \"{{rutNuevo}}\",\n  \"nombre\": \"Comercial Postman Editado\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"direccion\": \"Av. Providencia 1234, Santiago\",\n  \"email\": \"contacto@postman.cl\",\n  \"telefono\": \"+56912345678\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Nombre actualizado\", () => pm.expect(pm.response.json().nombre).to.eql(\"Comercial Postman Editado\"));"
+                ]
               }
             }
-          }
+          ]
         },
         {
-          "name": "Editor ve la cuenta enmascarada",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('****6789', () => pm.expect(pm.response.json().numeroCuenta).to.eql('****6789'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenEditor}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "clientes",
-                "{{clienteId}}"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-FUN-05 Contratos y estado calculado (RF-5.1, RF-5.4)",
-      "item": [
-        {
-          "name": "Crear contrato activo",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('contratoId', pm.response.json().id);",
-                  "pm.test('Estado ACTIVO', () => pm.expect(pm.response.json().estado).to.eql('ACTIVO'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/contratos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "contratos"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"titulo\": \"Contrato QA\",\n  \"descripcion\": \"Postman\",\n  \"fechaInicio\": \"2026-01-01\",\n  \"fechaTermino\": \"2027-12-31\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Fechas invertidas (400)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/contratos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "contratos"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"titulo\": \"Malo\",\n  \"fechaInicio\": \"2026-12-31\",\n  \"fechaTermino\": \"2026-01-01\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Contratos del cliente demo con sus estados",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "const estados = pm.response.json().map(c => c.estado);",
-                  "pm.test('Incluye POR_VENCER y ACTIVO', () => { pm.expect(estados).to.include('POR_VENCER'); pm.expect(estados).to.include('ACTIVO'); });"
-                ]
-              }
-            }
-          ],
+          "name": "CP-SEG-02 Intento de inyección SQL en el filtro",
           "request": {
             "method": "GET",
             "header": [
@@ -984,761 +727,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/1/contratos",
+              "raw": "{{baseUrl}}/api/v1/clientes?nombre=' OR '1'='1",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "clientes",
-                "1",
-                "contratos"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-INT-01 Documento: subir y descargar (RF-5.2, RF-5.3)",
-      "item": [
-        {
-          "name": "Subir PDF",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Menos de 10 s', () => pm.expect(pm.response.responseTime).to.be.below(10000));",
-                  "pm.test('SHA-256 registrado', () => pm.expect(pm.response.json().sha256).to.have.lengthOf(64));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/contratos/{{contratoId}}/documentos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "contratos",
-                "{{contratoId}}",
-                "documentos"
-              ]
-            },
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "archivo",
-                  "type": "file",
-                  "src": "postman/fixtures/contrato.pdf"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Descargar documento",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Es adjunto', () => pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenEditor}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/contratos/{{contratoId}}/documentos/descarga",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "contratos",
-                "{{contratoId}}",
-                "documentos",
-                "descarga"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-INT-02 Enlace para compartir (RF-5.5)",
-      "item": [
-        {
-          "name": "Generar enlace (24 h)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('enlaceToken', pm.response.json().token);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/contratos/{{contratoId}}/documentos/enlace",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "contratos",
-                "{{contratoId}}",
-                "documentos",
-                "enlace"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"horas\": 24\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Descargar por enlace (sin login)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/compartido/{{enlaceToken}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "compartido",
-                "{{enlaceToken}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Revocar enlaces",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/contratos/{{contratoId}}/documentos/enlace",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "contratos",
-                "{{contratoId}}",
-                "documentos",
-                "enlace"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Enlace revocado (410)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 410', () => pm.response.to.have.status(410));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/compartido/{{enlaceToken}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "compartido",
-                "{{enlaceToken}}"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-INT-03 Auditoria (RF-6.1)",
-      "item": [
-        {
-          "name": "Ver auditoria",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "const acciones = pm.response.json().contenido.map(r => r.accion);",
-                  "['CREAR_CLIENTE','EDITAR_CLIENTE','CREAR_CONTRATO','SUBIR_DOCUMENTO','DESCARGAR_DOCUMENTO','COMPARTIR_DOCUMENTO'].forEach(a => pm.test('Registra ' + a, () => pm.expect(acciones).to.include(a)));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/auditoria?pagina=0&tamano=50",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "auditoria"
-              ],
-              "query": [
-                {
-                  "key": "pagina",
-                  "value": "0"
-                },
-                {
-                  "key": "tamano",
-                  "value": "50"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Editor no ve la auditoria (403)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenEditor}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/auditoria",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "auditoria"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-INT-04 Aislamiento entre empresas y correo unico (RB-1, RB-2)",
-      "item": [
-        {
-          "name": "Otra empresa no ve clientes de la empresa 1 (403)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenOtra}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "clientes"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Otra empresa no ve un cliente puntual (403)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenOtra}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/clientes/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "clientes",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Correo principal repetido (409)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenOtra}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Duplicada\",\n  \"correo\": \"contacto@crealab-demo.test\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-SEG-01 RBAC: editor solo lectura (RF-3.2, NFR-SEG-4, RB-4)",
-      "item": [
-        {
-          "name": "Editor puede listar (200)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenEditor}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "clientes"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Editor no crea clientes (403)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenEditor}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "clientes"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Intento editor\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Editor no elimina clientes (403)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenEditor}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/clientes/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "clientes",
-                "1"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Editor no crea contratos (403)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenEditor}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/contratos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "contratos"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"clienteId\": 1,\n  \"titulo\": \"x\",\n  \"fechaInicio\": \"2026-01-01\",\n  \"fechaTermino\": \"2026-12-31\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Editor no gestiona usuarios (403)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenEditor}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/usuarios",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "usuarios"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Sin token (401)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "clientes"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-SEG-02 Inyeccion: XSS y SQLi (NFR-SEG-5)",
-      "item": [
-        {
-          "name": "XSS en nombre de cliente (400)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "clientes"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"<script>alert(1)</script>\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "SQLi en el filtro no filtra datos",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('No devuelve todos los clientes', () => pm.expect(pm.response.json().totalElementos).to.eql(0));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/clientes?nombre=' OR '1'='1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
+                "api",
+                "v1",
                 "clientes"
               ],
               "query": [
@@ -1748,286 +743,22 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"No devuelve todos los clientes (consulta parametrizada)\", () => pm.expect(pm.response.json().totalElementos).to.eql(0));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "SQLi en login (401)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"admin.demo' --\",\n  \"contrasena\": \"x\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-SEG-05 Archivo malicioso (RF-5.2, NFR-SEG-5)",
-      "item": [
-        {
-          "name": "Ejecutable renombrado a .pdf (415)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 415', () => pm.response.to.have.status(415));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/contratos/{{contratoId}}/documentos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "contratos",
-                "{{contratoId}}",
-                "documentos"
-              ]
-            },
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "archivo",
-                  "type": "file",
-                  "src": "postman/fixtures/malicioso.pdf"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-FUN-06 Usuarios de la empresa (RF-3.1, RF-3.3)",
-      "item": [
-        {
-          "name": "Crear usuario EDITOR",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('usuarioNuevoId', pm.response.json().usuarioId);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/usuarios",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "usuarios"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombreUsuario\": \"ed{{$randomInt}}{{$randomInt}}\",\n  \"correo\": \"ed{{$timestamp}}@atlas.test\",\n  \"contrasena\": \"{{clave}}\",\n  \"rol\": \"EDITOR\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Cambiar rol a ADMIN",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/usuarios/{{usuarioNuevoId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "usuarios",
-                "{{usuarioNuevoId}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"rol\": \"ADMIN\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Quitar usuario",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/empresas/1/usuarios/{{usuarioNuevoId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "empresas",
-                "1",
-                "usuarios",
-                "{{usuarioNuevoId}}"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "CP-FUN-04 Eliminacion logica (RF-4.2)",
-      "item": [
-        {
-          "name": "Eliminar cliente QA (204)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenAdmin}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "clientes",
-                "{{clienteId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Ya no aparece (404)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
-                ]
-              }
-            }
-          ],
+          "name": "CP-SEG-02 Id no numérico",
           "request": {
             "method": "GET",
             "header": [
@@ -2037,16 +768,995 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v1/clientes/1%20OR%201=1",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
+                "clientes",
+                "1%20OR%201=1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error en JSON con mensaje claro\", () => { const b = pm.response.json(); pm.expect(b.status).to.be.a(\"number\"); pm.expect(b.message).to.be.a(\"string\").and.not.empty; pm.expect(JSON.stringify(b)).to.not.include(\"Exception\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 CP-CON Contratos y estado",
+      "item": [
+        {
+          "name": "CP-CON-01 Crear contrato ACTIVO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}",
+                "contratos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Contrato activo\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"fechaInicio\": \"{{hoyMenos30}}\",\n  \"fechaTermino\": \"{{hoyMas200}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const f = d => { const x = new Date(); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };",
+                  "pm.collectionVariables.set(\"hoyMenos30\", f(-30));",
+                  "pm.collectionVariables.set(\"hoyMenos1\", f(-1));",
+                  "pm.collectionVariables.set(\"hoyMas10\", f(10));",
+                  "pm.collectionVariables.set(\"hoyMas200\", f(200));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Estado ACTIVO\", () => pm.expect(b.estado).to.eql(\"ACTIVO\"));",
+                  "pm.test(\"Asociado al cliente (RB-3)\", () => pm.expect(b.clienteId).to.eql(pm.collectionVariables.get(\"clienteId\")));",
+                  "pm.collectionVariables.set(\"contratoId\", b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CON-02 Contrato POR_VENCER (termina en 10 días)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}",
+                "contratos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Contrato por vencer\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"fechaInicio\": \"{{hoyMenos30}}\",\n  \"fechaTermino\": \"{{hoyMas10}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Estado POR_VENCER\", () => pm.expect(pm.response.json().estado).to.eql(\"POR_VENCER\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CON-02 Contrato EXPIRADO (terminó ayer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}",
+                "contratos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Contrato expirado\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"fechaInicio\": \"{{hoyMenos30}}\",\n  \"fechaTermino\": \"{{hoyMenos1}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Estado EXPIRADO\", () => pm.expect(pm.response.json().estado).to.eql(\"EXPIRADO\"));",
+                  "pm.collectionVariables.set(\"contratoExpiradoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CON-03 Fecha de término anterior al inicio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}",
+                "contratos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Fechas invertidas\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"fechaInicio\": \"{{hoyMas200}}\",\n  \"fechaTermino\": \"{{hoyMenos30}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de fechas\", () => pm.expect(pm.response.json().message).to.include(\"fecha de término\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CON-03 Fecha con formato inválido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}",
+                "contratos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Formato malo\",\n  \"fechaInicio\": \"31-12-2026\",\n  \"fechaTermino\": \"2027-01-01\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error en JSON con mensaje claro\", () => { const b = pm.response.json(); pm.expect(b.status).to.be.a(\"number\"); pm.expect(b.message).to.be.a(\"string\").and.not.empty; pm.expect(JSON.stringify(b)).to.not.include(\"Exception\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CON-04 Listar contratos del cliente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}",
+                "contratos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Tres contratos con estado calculado\", () => { pm.expect(b).to.have.length(3); b.forEach(c => pm.expect([\"ACTIVO\",\"POR_VENCER\",\"EXPIRADO\"]).to.include(c.estado)); });",
+                  "pm.test(\"Ordenados por fecha de término\", () => pm.expect(b[0].estado).to.eql(\"EXPIRADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CON-04 Obtener contrato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contratos",
+                "{{contratoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CON-04 Actualizar contrato",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contratos",
+                "{{contratoId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Contrato renegociado\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"fechaInicio\": \"{{hoyMenos30}}\",\n  \"fechaTermino\": \"{{hoyMas10}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Cambia a POR_VENCER al acortar la fecha\", () => pm.expect(pm.response.json().estado).to.eql(\"POR_VENCER\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-CON-04 Eliminar contrato expirado",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoExpiradoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contratos",
+                "{{contratoExpiradoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 CP-ROL Permisos del EDITOR (solo lectura)",
+      "item": [
+        {
+          "name": "CP-ROL-01 EDITOR lista clientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-ROL-01 EDITOR ve contratos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}",
+                "contratos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-ROL-02 EDITOR no puede crear clientes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rut\": \"{{rutNuevo}}\",\n  \"nombre\": \"Comercial Postman {{$randomInt}}\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"direccion\": \"Av. Providencia 1234, Santiago\",\n  \"email\": \"contacto@postman.cl\",\n  \"telefono\": \"+56912345678\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Mensaje de permiso\", () => pm.expect(pm.response.json().message).to.eql(\"Su rol no tiene permiso para esta operación\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-ROL-02 EDITOR no puede editar contratos",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contratos",
+                "{{contratoId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Contrato Postman\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"fechaInicio\": \"{{hoyMenos30}}\",\n  \"fechaTermino\": \"{{hoyMas200}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-ROL-02 EDITOR no puede eliminar clientes",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEditor}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}?confirmar=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}"
+              ],
+              "query": [
+                {
+                  "key": "confirmar",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 CP-CLI-07 Eliminación lógica con confirmación",
+      "item": [
+        {
+          "name": "Eliminar sin confirmar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
                 "clientes",
                 "{{clienteId}}"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Pide confirmación\", () => pm.expect(pm.response.json().message).to.include(\"confirmar=true\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar confirmando",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}?confirmar=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}"
+              ],
+              "query": [
+                {
+                  "key": "confirmar",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "El cliente eliminado ya no se muestra",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error en JSON con mensaje claro\", () => { const b = pm.response.json(); pm.expect(b.status).to.be.a(\"number\"); pm.expect(b.message).to.be.a(\"string\").and.not.empty; pm.expect(JSON.stringify(b)).to.not.include(\"Exception\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sus contratos tampoco",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/{{clienteId}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "{{clienteId}}",
+                "contratos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 CP-SEG Cabeceras y errores",
+      "item": [
+        {
+          "name": "CP-SEG-03 Cabeceras de seguridad en la Home",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "[\"X-Content-Type-Options\",\"X-Frame-Options\",\"Content-Security-Policy\",\"Referrer-Policy\"].forEach(h => pm.test(\"Cabecera \" + h, () => pm.response.to.have.header(h)));",
+                  "pm.test(\"Clickjacking bloqueado\", () => pm.expect(pm.response.headers.get(\"X-Frame-Options\")).to.eql(\"DENY\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-SEG-03 Cabeceras también en respuestas 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"CSP presente\", () => pm.response.to.have.header(\"Content-Security-Policy\"));",
+                  "pm.test(\"No cachea respuestas de la API\", () => pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-USA-01 Documentación OpenAPI disponible",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/openapi/atlas-openapi.yaml",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "openapi",
+                "atlas-openapi.yaml"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Es el contrato de Atlas\", () => pm.expect(pm.response.text()).to.include(\"title: API Atlas\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CP-SEG-04 Método no permitido",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Rechazado (403/405)\", () => pm.expect(pm.response.code).to.be.oneOf([403, 405]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 CP-AUT-04 Logout y revocación",
+      "item": [
+        {
+          "name": "Logout ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "El token revocado ya no sirve",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clientes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
@@ -2061,23 +1771,11 @@
       "value": ""
     },
     {
-      "key": "tokenOtra",
+      "key": "tokenAlterado",
       "value": ""
     },
     {
-      "key": "tokenNuevo",
-      "value": ""
-    },
-    {
-      "key": "tokenTemporal",
-      "value": ""
-    },
-    {
-      "key": "nuevoUsuario",
-      "value": ""
-    },
-    {
-      "key": "empresaNueva",
+      "key": "rutNuevo",
       "value": ""
     },
     {
@@ -2089,11 +1787,27 @@
       "value": ""
     },
     {
-      "key": "enlaceToken",
+      "key": "contratoExpiradoId",
       "value": ""
     },
     {
-      "key": "usuarioNuevoId",
+      "key": "usuarioAtaque",
+      "value": ""
+    },
+    {
+      "key": "hoyMenos30",
+      "value": ""
+    },
+    {
+      "key": "hoyMenos1",
+      "value": ""
+    },
+    {
+      "key": "hoyMas10",
+      "value": ""
+    },
+    {
+      "key": "hoyMas200",
       "value": ""
     }
   ]

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>API Atlas · MVP Caso A</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header>
+    <div class="accent"></div>
+    <h1>API Atlas</h1>
+    <p>MVP de la plataforma Atlas de CreaLab SpA (Caso A): gestión de clientes y de sus
+        contratos con estado calculado, login con JWT y roles ADMIN / EDITOR. Construido con
+        Spring Boot, arquitectura limpia y SQLite.</p>
+    <div class="badges">
+        <span class="badge">Spring Boot 3</span>
+        <span class="badge">Java 21</span>
+        <span class="badge">Spring Security + JWT</span>
+        <span class="badge">bcrypt</span>
+        <span class="badge">SQLite</span>
+        <span class="badge">OpenAPI</span>
+        <span class="badge">Arquitectura limpia</span>
+    </div>
+</header>
+
+<main>
+
+    <section>
+        <h2>Documentación de la API</h2>
+        <div class="cards">
+            <a class="card" href="/swagger-ui.html">
+                <span class="tag">Interactivo</span>
+                <h3>Swagger UI</h3>
+                <p>Inicia sesión con <code>/api/v1/auth/login</code>, pulsa «Authorize» y prueba
+                    cada endpoint.</p>
+            </a>
+            <a class="card" href="/redoc.html">
+                <span class="tag">Lectura</span>
+                <h3>Redoc</h3>
+                <p>Documentación navegable generada desde el contrato OpenAPI.</p>
+            </a>
+            <a class="card" href="/openapi/atlas-openapi.yaml">
+                <span class="tag">Contrato</span>
+                <h3>OpenAPI YAML</h3>
+                <p>Especificación OpenAPI 3.0 que define el contrato del MVP.</p>
+            </a>
+        </div>
+    </section>
+
+    <section>
+        <h2>Endpoints</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Método</th>
+                <th>Ruta</th>
+                <th>Descripción</th>
+                <th>Rol</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td><span class="method post">POST</span></td>
+                <td><code>/api/v1/auth/login</code></td>
+                <td>Inicia sesión y entrega un JWT (15 min)</td>
+                <td>Público</td>
+            </tr>
+            <tr>
+                <td><span class="method post">POST</span></td>
+                <td><code>/api/v1/auth/logout</code></td>
+                <td>Cierra la sesión revocando el token</td>
+                <td>Autenticado</td>
+            </tr>
+            <tr>
+                <td><span class="method get">GET</span></td>
+                <td><code>/api/v1/clientes?nombre=&amp;pagina=0&amp;tamano=10</code></td>
+                <td>Lista clientes con filtro y paginación</td>
+                <td>ADMIN, EDITOR</td>
+            </tr>
+            <tr>
+                <td><span class="method get">GET</span></td>
+                <td><code>/api/v1/clientes/{id}</code></td>
+                <td>Obtiene un cliente</td>
+                <td>ADMIN, EDITOR</td>
+            </tr>
+            <tr>
+                <td><span class="method post">POST</span></td>
+                <td><code>/api/v1/clientes</code></td>
+                <td>Crea un cliente</td>
+                <td>ADMIN</td>
+            </tr>
+            <tr>
+                <td><span class="method put">PUT</span></td>
+                <td><code>/api/v1/clientes/{id}</code></td>
+                <td>Actualiza un cliente</td>
+                <td>ADMIN</td>
+            </tr>
+            <tr>
+                <td><span class="method delete">DELETE</span></td>
+                <td><code>/api/v1/clientes/{id}?confirmar=true</code></td>
+                <td>Eliminación lógica con confirmación</td>
+                <td>ADMIN</td>
+            </tr>
+            <tr>
+                <td><span class="method get">GET</span></td>
+                <td><code>/api/v1/clientes/{id}/contratos</code></td>
+                <td>Contratos del cliente con su estado</td>
+                <td>ADMIN, EDITOR</td>
+            </tr>
+            <tr>
+                <td><span class="method post">POST</span></td>
+                <td><code>/api/v1/clientes/{id}/contratos</code></td>
+                <td>Crea un contrato para el cliente</td>
+                <td>ADMIN</td>
+            </tr>
+            <tr>
+                <td><span class="method get">GET</span></td>
+                <td><code>/api/v1/contratos/{id}</code></td>
+                <td>Obtiene un contrato con su estado</td>
+                <td>ADMIN, EDITOR</td>
+            </tr>
+            <tr>
+                <td><span class="method put">PUT</span></td>
+                <td><code>/api/v1/contratos/{id}</code></td>
+                <td>Actualiza un contrato</td>
+                <td>ADMIN</td>
+            </tr>
+            <tr>
+                <td><span class="method delete">DELETE</span></td>
+                <td><code>/api/v1/contratos/{id}</code></td>
+                <td>Elimina un contrato</td>
+                <td>ADMIN</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Arquitectura limpia</h2>
+        <div class="layers">
+            <div class="layer">
+                <h3>Dominio</h3>
+                <ul>
+                    <li>Modelos <code>Cliente</code>, <code>Contrato</code>, <code>Usuario</code></li>
+                    <li>Reglas: <code>EstadoContrato</code>, <code>Rut</code></li>
+                    <li>Puertos <code>*Gateway</code> y excepciones</li>
+                </ul>
+            </div>
+            <div class="layer">
+                <h3>Aplicación</h3>
+                <ul>
+                    <li><code>ClienteUseCase</code>, <code>ContratoUseCase</code></li>
+                    <li><code>AuthUseCase</code> (login, bloqueo, logout)</li>
+                    <li>Log de auditoría</li>
+                </ul>
+            </div>
+            <div class="layer">
+                <h3>Infraestructura</h3>
+                <ul>
+                    <li>Adaptadores REST y JPA / SQLite</li>
+                    <li>Spring Security + JWT + bcrypt</li>
+                    <li>Cabeceras de seguridad y OpenAPI</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Cómo probarlo</h2>
+        <p>1. Iniciar sesión (usuarios de demostración <code>admin</code> y <code>editor</code>):</p>
+        <pre><code>curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"nombreUsuario":"admin","contrasena":"Admin#Atlas2026"}'</code></pre>
+        <p>2. Usar el <code>accessToken</code> recibido:</p>
+        <pre><code>curl http://localhost:8080/api/v1/clientes \
+  -H "Authorization: Bearer &lt;accessToken&gt;"</code></pre>
+    </section>
+
+</main>
+
+<footer>
+    ISY1102 · Seguridad y Calidad en el Desarrollo de Software — MVP Atlas (Caso A)
+</footer>
+
+</body>
+</html>

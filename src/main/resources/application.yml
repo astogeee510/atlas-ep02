@@ -1,0 +1,50 @@
+server:
+  port: 8080
+  error:
+    # Nunca exponer trazas ni mensajes internos al cliente (NFR-SEG-6)
+    include-stacktrace: never
+    include-message: never
+
+spring:
+  application:
+    name: atlas-api
+
+  datasource:
+    url: jdbc:sqlite:./data/atlas.db?journal_mode=WAL&busy_timeout=5000
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 5
+
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+# OpenAPI: se usa un contrato YAML propio (contract-first)
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /openapi/atlas-openapi.yaml
+    operations-sorter: method
+    tags-sorter: alpha
+
+atlas:
+  jwt:
+    # Secreto Base64 de al menos 256 bits. Si no se define, se genera uno aleatorio al arrancar.
+    secret: ${ATLAS_JWT_SECRET:}
+    minutos: 15
+  usuarios:
+    # Credenciales de demostracion SOLO para entorno local / CI.
+    # En cualquier despliegue real se reemplazan con variables de entorno.
+    admin-password: ${ATLAS_ADMIN_PASSWORD:Admin#Atlas2026}
+    editor-password: ${ATLAS_EDITOR_PASSWORD:Editor#Atlas2026}
+  datos-demo: ${ATLAS_DATOS_DEMO:true}
+
+logging:
+  level:
+    cl.duoc.atlas: INFO
+    AUDITORIA: INFO
